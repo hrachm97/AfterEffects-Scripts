@@ -1,5 +1,13 @@
 var std = app.project.activeItem;
 
+function validateSelect(count){
+   if (std.selectedLayers.length == count) return true;
+   else {
+      alert("Please select two layers!");
+      return false;
+   }
+}
+
 function deepCopy(layer, std) {
    if (!validateSelect(1)) return;
 
@@ -13,25 +21,26 @@ function deepCopy(layer, std) {
 
 function makeSourceUnique(layer, thisComp) {
    var source;
-   if(layer.source instanceof CompItem){
+   if(layer.source == null) {
+      
+   } else if(layer.source instanceof CompItem){
       source = layer.source.duplicate(); 
       layer.replaceSource(source, true);
       for(var i = 1; i <= layer.source.numLayers; i++) {
          makeSourceUnique(layer.source.layer(i), layer.source);
       }
-   } else if(layer.source instanceof FootageItem && !(layer.source.mainSource instanceof SolidSource)) {
+   } 
+   else if(layer.source instanceof FootageItem && !(layer.source.mainSource instanceof SolidSource)) {
       var projFile = layer.source;
       var imp = new ImportOptions();
       imp.file = projFile.file;
       source = app.project.importFile(imp);
       layer.replaceSource(source, true);
-   } 
-   else if(layer.source.mainSource instanceof SolidSource) {
-      var a = layer.source;
-      layer.moveAfter(
-         thisComp.layers.addSolid(a.mainSource.color, a.name, a.width, a.height, a.pixelAspect, a.duration)
-      );
-      layer.remove();
+   } else if(layer.source.mainSource instanceof SolidSource) {
+      var src = layer.source;
+      var newSolid = thisComp.layers.addSolid(src.mainSource.color, src.name, src.width, src.height, src.pixelAspect, src.duration);
+      layer.replaceSource(newSolid.source, true);
+      newSolid.remove();
    }
 
 }
