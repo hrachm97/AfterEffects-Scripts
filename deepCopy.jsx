@@ -45,8 +45,4 @@ function makeSourceUnique(layer, thisComp) {
 
 }
 
-function experiment() {
-   
-}
-
 deepCopy(std.selectedLayers[0], std);
