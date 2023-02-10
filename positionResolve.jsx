@@ -1,5 +1,7 @@
 var std = app.project.activeItem;
 
+app.beginUndoGroup("resolve position");
+
 var layer = std.selectedLayers[0];
 var p = layer.transform.position;
 var a = layer.transform.anchorPoint;
@@ -13,3 +15,5 @@ for(i = 1; i <= p.numKeys; i++) {
     )
 }
 a.setValue([layer.width/2,layer.height/2])
+
+app.endUndoGroup();
