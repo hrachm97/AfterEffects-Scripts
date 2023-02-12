@@ -57,7 +57,7 @@ function makeUnique(arr) {
             }
         }
         
-        if(arr[i]) {
+        if(arr[i] !== false) {
             //alert(arr[i]);
             layers.push(arr[i]);
         }
@@ -67,12 +67,12 @@ function makeUnique(arr) {
 
 function toNearestMutualNode(arr) {
     var min = minDepth(arr);
-    var layers = toEqualDepths(arr, min);
-
+    var layers = makeUnique(toEqualDepths(arr, min));
+    
     while (makeUnique(levelUp(layers)).length !== 1) {
         layers = makeUnique(levelUp(layers));
     }
-
+    
     return layers;
 }
 
@@ -97,7 +97,7 @@ function addHandle(node, handler) {
         }
         //handler.position.setValue([0,0]);
     } else {
-        handler.moveBefore(node);
+        if(handler.index > node.index) handler.moveBefore(node);
         //handler.position.setValue(node.position.value);
     }
     node.parent = handler;
@@ -107,6 +107,7 @@ function doThing() {
     app.beginUndoGroup("test");
 
     var layers = toNearestMutualNode(std.selectedLayers);
+    //alert([layers[0].index, layers[1].index]);
 
     var handler = std.layers.addNull();
 
