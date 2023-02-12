@@ -1,88 +1,120 @@
-function nodeDepth(node, counter) {
-    counter = typeof counter == "undefined" ? 0 : counter;
-    if(node.parent) {
-        return nodeDepth(node.parent, counter + 1);
-    } 
+var std = app.project.activeItem;
+
+function nodeDepth(node) {
+    var counter = 0;
+    while(node.parent) {
+        node = node.parent;
+        counter++;
+    }
     return counter;
 }
 
 function toNode(node, depth) {
-    var maxDepth = nodeDepth(node);
-    if(maxDepth == depth) return node;
-    return toNode(node.parent, depth)
+    while(depth) {
+        if(node.parent) node = node.parent;
+        else {
+            alert("Can't go deeper than node depth: ");
+            return;
+        }
+        depth--;
+    }
+    return node;
+}
+
+function minDepth(arr){
+    var minDepth = 10000000;
+    for(i = 0; i < arr.length; i++) {
+        var min = nodeDepth(arr[i]);
+        if(min < minDepth) minDepth = min;
+    }
+    return minDepth;
+}
+
+function toEqualDepths(arr, depth) {
+    var layers = [];
+    for(i = 0; i < arr.length; i++) {
+        layers.push(toNode(arr[i], nodeDepth(arr[i]) - depth));
+    }
+
+    return layers;
+}
+
+function levelUp(arr) {
+    var layers = [];
+    for(i = 0; i < arr.length; i++) {
+        layers.push(arr[i].parent);
+    }
+    return layers;
 }
 
 function makeUnique(arr) {
-    var tmp = [];
+    var layers = [];
     for(i = 0; i < arr.length; i++) {
-        var found = 0;
-        for(j = 0; j < arr.length; j++) {
-            if(arr[i] === arr[j]) found++;
+        for(j = i+1; j < arr.length; j++) {
+            if(i === j) continue;
+            if(arr[i] === arr[j]) {
+                arr[j] = false;
+            }
         }
-        if(found < 2) tmp.push(arr[i]);
+        
+        if(arr[i]) {
+            //alert(arr[i]);
+            layers.push(arr[i]);
+        }
     }
-    return tmp;
+    return layers;
 }
 
-function addHandle(node, handler, option) {
-    option = typeof option == "undefined" ? false : option;
+function toNearestMutualNode(arr) {
+    var min = minDepth(arr);
+    var layers = toEqualDepths(arr, min);
+
+    while (makeUnique(levelUp(layers)).length !== 1) {
+        layers = makeUnique(levelUp(layers));
+    }
+
+    return layers;
+}
+
+// function makeUnique(arr) {
+//     var tmp = [];
+//     for(i = 0; i < arr.length; i++) {
+//         var found = 0;
+//         for(j = 0; j < arr.length; j++) {
+//             if(arr[i] === arr[j]) found++;
+//         }
+//         if(found < 2) tmp.push(arr[i]);
+//     }
+//     return tmp;
+// }
+
+function addHandle(node, handler) {
     if(node.parent) {
-        handler.parent = node.parent;
-        handler.moveAfter(node.parent);
+        if(handler.parent);
+        else {
+            handler.parent = node.parent;
+            handler.moveAfter(node.parent);
+        }
+        //handler.position.setValue([0,0]);
     } else {
         handler.moveBefore(node);
+        //handler.position.setValue(node.position.value);
     }
-    handler.position.setValue(option ? [0,0] : node.position.value);
     node.parent = handler;
 }
 
-function addParent() {
-    app.beginUndoGroup("parenting null");
-    var selectedLayers = [];
-    for(i = 1; i <= myComp.numLayers; i++) {
-        if(myComp.layer(i).selected) {
-            selectedLayers.push(myComp.layer(i));
-        }
+function doThing() {
+    app.beginUndoGroup("test");
+
+    var layers = toNearestMutualNode(std.selectedLayers);
+
+    var handler = std.layers.addNull();
+
+    for(i = 0; i < layers.length; i++) {
+        addHandle(layers[i], handler);
     }
-    var handler = myComp.layers.addNull();
-    var selectedCases = [
-        function() {
-            for(i = 2; i <= myComp.numLayers; i++) {
-                if(!Boolean(myComp.layer(i).parent)) myComp.layer(i).parent = handler;
-            }
-        },
-        function() {
-            addHandle(selectedLayers[0], handler);
-            //alert(toNode(selectedLayers[0], 2).name);
-        },
-        function() {
-            var minDepth = nodeDepth(selectedLayers[0]);
-            for(i = 1; i < selectedLayers.length; i++) {
-                var tmp = nodeDepth(selectedLayers[i]);
-                if(minDepth > tmp) minDepth = tmp;
-            }
-            //alert(selectedLayers.length);
-            for(i = 1; i < selectedLayers.length; i++) {
-                for(j = minDepth; j >= 0; j--) {
-                    if(toNode(selectedLayers[0], j) === toNode(selectedLayers[i], j)) {
-                        selectedLayers[0] = toNode(selectedLayers[0], j + 1 > minDepth ? j : j + 1);
-                        selectedLayers[i] = toNode(selectedLayers[i], j + 1 > minDepth ? j : j + 1);
-                        minDepth = j;
-                        break;
-                    }
-                }
-            }
-            selectedLayers = makeUnique(selectedLayers);
-            //alert(selectedLayers[0].index)
-            for(i = 0; i < selectedLayers.length; i++) {
-                addHandle(selectedLayers[i], handler, true);
-                //alert(selectedLayers[i].index)
-            }
-        }
-    ];
-    selectedCases[selectedLayers.length > 2 ? 2 : selectedLayers.length]();
     app.endUndoGroup();
 }
-
-addParent()
-//alert(toNode(myComp.selectedLayers[0], 2).name);
+//alert()
+doThing()
+//addHandle(std.selectedLayers[0], std.selectedLayers[1], false);
