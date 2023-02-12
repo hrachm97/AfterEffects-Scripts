@@ -88,23 +88,24 @@ function toNearestMutualNode(arr) {
 //     return tmp;
 // }
 
-function addHandle(node, handler) {
+function addHandle(node, handler, singleOrphan) {
     if(node.parent) {
         if(handler.parent);
         else {
             handler.parent = node.parent;
+            var rect = handler.parent.sourceRectAtTime(std.time, true);
+            handler.position.setValue([rect.left + rect.width/2, rect.top + rect.height/2]);
             handler.moveAfter(node.parent);
         }
-        //handler.position.setValue([0,0]);
     } else {
         if(handler.index > node.index) handler.moveBefore(node);
-        //handler.position.setValue(node.position.value);
+        if(singleOrphan) handler.position.setValue(node.position.value);
     }
     node.parent = handler;
 }
 
-function doThing() {
-    app.beginUndoGroup("test");
+function main() {
+    app.beginUndoGroup("parenting layers");
 
     var layers = toNearestMutualNode(std.selectedLayers);
     //alert([layers[0].index, layers[1].index]);
@@ -112,10 +113,9 @@ function doThing() {
     var handler = std.layers.addNull();
 
     for(i = 0; i < layers.length; i++) {
-        addHandle(layers[i], handler);
+        addHandle(layers[i], handler, layers.length === 1);
     }
     app.endUndoGroup();
 }
-//alert()
-doThing()
-//addHandle(std.selectedLayers[0], std.selectedLayers[1], false);
+
+main()
