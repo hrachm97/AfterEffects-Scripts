@@ -1,6 +1,6 @@
 var std = app.project.activeItem;
 
-var time = 5;
+var time = std.time;
 var startTimes = [];
 
 app.beginUndoGroup("inPoint pasting");
