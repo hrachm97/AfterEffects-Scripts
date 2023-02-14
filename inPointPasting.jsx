@@ -1,22 +1,21 @@
 var std = app.project.activeItem;
 
-var time = std.time;
-var startTimes = [];
+var originalTime = std.time;
+var layers = [];
 
 app.beginUndoGroup("inPoint pasting");
 
-for(i = 0; i < std.selectedLayers.length; i++) {
-    startTimes.push(std.selectedLayers[i].startTime);
-    std.selectedLayers[i].startTime = std.selectedLayers[i].startTime - std.selectedLayers[i].inPoint;
+for(i = 0; i < std.selectedLayers.length; i++) 
+{
+    layers.push(std.selectedLayers[i]);
 }
-std.time = 0;
 
-app.executeCommand(20);
-
-std.time = time;
-for(i = 0; i < std.selectedLayers.length; i++) {
-    std.selectedLayers[i].startTime = startTimes[i];
+for(i = 0; i < layers.length; i++) {
+    std.time = layers[0].inPoint;
+    app.executeCommand(20);
 }
+
+std.time = originalTime;
 
 app.endUndoGroup();
 
