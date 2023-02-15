@@ -7,7 +7,7 @@ app.beginUndoGroup("inPoint pasting");
 
 for(i = 0; i < std.selectedLayers.length; i++) {
     startTimes.push(std.selectedLayers[i].startTime);
-    std.selectedLayers[i].startTime = std.selectedLayers[i].startTime - std.selectedLayers[i].inPoint;
+    std.selectedLayers[i].startTime -= std.selectedLayers[i].inPoint;
 }
 std.time = 0;
 
