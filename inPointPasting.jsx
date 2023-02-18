@@ -1,6 +1,5 @@
 var std = app.project.activeItem;
 
-var originalTime = std.time;
 var layers = [];
 
 app.beginUndoGroup("inPoint pasting");
@@ -8,17 +7,15 @@ app.beginUndoGroup("inPoint pasting");
 for(i = 0; i < std.selectedLayers.length; i++) 
 {
     layers.push(std.selectedLayers[i]);
-    std.selectedLayers[i].selected = false;
 }
+
+app.executeCommand(20);
+alert();
 
 for(i = 0; i < layers.length; i++) {
-    std.time = layers[0].inPoint;
-    layers[i].selected = true;
-    app.executeCommand(20);
-    layers[i].selected = false;
+    layers[i].transform.position.expression = "var otherLayer = thisComp.layer(\"" + std.selectedLayers[0].name + "\");\nvar difference = thisLayer.inPoint - otherLayer.inPoint;\notherLayer.transform.position.valueAtTime(time - difference)";
 }
-
-std.time = originalTime;
+std.selectedLayers[0].remove();
 
 app.endUndoGroup();
 
