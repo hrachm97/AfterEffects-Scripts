@@ -9,13 +9,22 @@ for(i = 0; i < std.selectedLayers.length; i++)
     layers.push(std.selectedLayers[i]);
 }
 
+var tmp = std.layers.addNull();
 app.executeCommand(20);
-alert();
+var theLayer = std.selectedLayers[0].transform.position.expression;
+
+function getPosition(string, subString, index) {
+    return string.split(subString, index).join(subString).length;
+}
+
+theLayer = theLayer.substr(0, theLayer.indexOf(").t") + 1);
+
+tmp.remove();
+
+
 
 for(i = 0; i < layers.length; i++) {
-    layers[i].transform.position.expression = "var otherLayer = thisComp.layer(\"" + std.selectedLayers[0].name + "\");\nvar difference = thisLayer.inPoint - otherLayer.inPoint;\notherLayer.transform.position.valueAtTime(time - difference)";
+    layers[i].transform.position.expression = "var otherLayer = " + theLayer + ";\nvar difference = thisLayer.inPoint - otherLayer.inPoint;\notherLayer.transform.position.valueAtTime(time - difference)";
 }
-std.selectedLayers[0].remove();
 
 app.endUndoGroup();
-
