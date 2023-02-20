@@ -53,4 +53,5 @@ function pasteKeys() {
     app.endUndoGroup();
 }
 
+pasteKeys();
 inPointExpression();
