@@ -1,9 +1,8 @@
 var std = app.project.activeItem;
 
 function inPointExpression() {
-    var layers = [];
-
     app.beginUndoGroup("inPoint pasting");
+    var layers = [];
 
     for(i = 0; i < std.selectedLayers.length; i++) 
     {
@@ -12,23 +11,22 @@ function inPointExpression() {
 
     var tmp = std.layers.addNull();
     app.executeCommand(20);
-    var theLayer = std.selectedLayers[0].transform.position.expression;
+    var theLayerPath = tmp.transform.position.expression;
 
-    function getPosition(string, subString, index) {
-        return string.split(subString, index).join(subString).length;
-    }
-
-    theLayer = theLayer.substr(0, theLayer.indexOf(").t") + 1);
-
+    if(theLayerPath) {
+        //alert(theLayerPath);
+        theLayerPath = theLayerPath.substr(0, theLayerPath.indexOf(").t") + 1);
+        //alert(theLayerPath);
+        
+        for(i = 0; i < layers.length; i++) {
+            alert();
+            layers[i].transform.position.expression = "var otherLayer = " + theLayerPath + ";\nvar difference = thisLayer.inPoint - otherLayer.inPoint;\notherLayer.transform.position.valueAtTime(time - difference)";
+        }
+    } 
+    
     tmp.remove();
-
-
-
-    for(i = 0; i < layers.length; i++) {
-        layers[i].transform.position.expression = "var otherLayer = " + theLayer + ";\nvar difference = thisLayer.inPoint - otherLayer.inPoint;\notherLayer.transform.position.valueAtTime(time - difference)";
-    }
-
     app.endUndoGroup();
+    return;
 }
 
 function pasteKeys() {
@@ -41,7 +39,10 @@ function pasteKeys() {
         startTimes.push(std.selectedLayers[i].startTime);
         std.selectedLayers[i].startTime -= std.selectedLayers[i].inPoint;
     }
-    std.time = 0;
+
+    var theLayer = std.layer(std.numLayers); // grdon
+
+    std.time = theLayer.transform.position.keyTime(1);
 
     app.executeCommand(20);
 
