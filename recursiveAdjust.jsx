@@ -15,12 +15,13 @@ function setDuration(layer, outPointAdjust) {
    }
 }
 
-app.beginUndoGroup("adjusting frame rates");
+app.beginUndoGroup("adjusting durations");
 
 
 for(i = 0; i < std.selectedLayers.length; i++) {
    setDuration(std.selectedLayers[i], true);
 }
-alert(count + " comp fps have been adjusted");
+
+alert(count + " comp duration have been adjusted");
 
 app.endUndoGroup();

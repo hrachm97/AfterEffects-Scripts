@@ -1,4 +1,7 @@
-var myComp = app.project.activeItem;
+var std = app.project.activeItem;
+
+var count = 0;
+
 function setWidth(comp, value, align) {
     oldWidth = comp.width;
     comp.width = value;
@@ -15,6 +18,7 @@ function setWidth(comp, value, align) {
         }
     }
 }
+
 function setHeight(comp, value, align) {
     oldHeight = comp.height;
     comp.height = value;
@@ -33,8 +37,28 @@ function setHeight(comp, value, align) {
 }
 
 function setSize(comp, width, height, horizontal, vertical) {
-    app.beginUndoGroup("change comp size");
     setWidth(comp, width, horizontal);
     setHeight(comp, height, vertical);
-    app.endUndoGroup();
 }
+
+function adjustCompSizes(layer) {
+    if(layer.source instanceof CompItem){
+        if(layer.source.width !== std.width && layer.source.height !== std.height) {
+           setSize(layer.source, std.width, std.height, "center", "center");
+           count++;
+        }
+        for(var i = 1; i <= layer.source.numLayers; i++) {
+            adjustCompSizes(layer.source.layer(i));
+        }
+    }
+}
+
+app.beginUndoGroup("adjusting frame rates");
+
+for(i = 0; i < std.selectedLayers.length; i++) {
+    adjustCompSizes(std.selectedLayers[i]);
+}
+
+alert(count + " comp sizes have been adjusted");
+
+app.endUndoGroup();
