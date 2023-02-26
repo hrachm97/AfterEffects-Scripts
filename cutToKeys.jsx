@@ -4,6 +4,40 @@ function debug(msg) {
    alert(msg);
 }
 
+function relEqual(a,b, relativityAmount) {
+   return Math.abs(a - b) <= relativityAmount;
+}
+
+function arraysEqual(arr1, arr2) {
+   if(arr1.length === undefined) return arr1 === arr2;
+   // If the arrays have different lengths, they are not equal
+   if (arr1.length !== arr2.length) {
+      $.writeln("Arrays have different lengths: " + arr1.length + " and " + arr2.length);
+      return false;
+   }
+
+   // Iterate over each element in the arrays
+   for (var i = 0; i < arr1.length; i++) {
+      val1 = arr1[i];
+      val2 = arr2[i];
+
+      // If both values are arrays, recursively compare them
+      if (Array.isArray(val1) && Array.isArray(val2)) {
+         if (!arraysEqual(val1, val2)) {
+         return false;
+         }
+      }
+      // Otherwise, compare the values directly
+      else if (!relEqual(val1, val2, std.frameDuration)) {
+         $.writeln("Arrays are not equal at index " + i + ": " + val1 + " and " + val2);
+         return false;
+      }
+   }
+
+   // If all elements are equal, the arrays are equal
+   return true;
+}
+
 function getAnimatedSections(prop) {
    var animatedTimes = [];
    var inPerod = false;
@@ -11,7 +45,7 @@ function getAnimatedSections(prop) {
    //alert(prop.name);
    for(var k = 2; k <= prop.numKeys; k++) {
       if(inPerod) {
-         if(JSON.stringify(prop.valueAtTime(prop.keyTime(k).toFixed(3), true)) === JSON.stringify(prevValue)) {
+         if(arraysEqual(prop.valueAtTime(prop.keyTime(k).toFixed(3), true), prevValue)) {
             animatedTimes.push([prop.keyTime(k - 1).toFixed(3), -1]);
             inPerod = false;
          } else {
@@ -19,7 +53,7 @@ function getAnimatedSections(prop) {
             if(k === prop.numKeys) animatedTimes.push([prop.keyTime(k).toFixed(3), -1]);
          }
       } else {
-         if(JSON.stringify(prop.valueAtTime(prop.keyTime(k).toFixed(3), true)) !== JSON.stringify(prevValue)) {
+         if(!arraysEqual(prop.valueAtTime(prop.keyTime(k).toFixed(3), true), prevValue)) {
             animatedTimes.push([prop.keyTime(k - 1).toFixed(3), 1]);
             prevValue = prop.valueAtTime(prop.keyTime(k).toFixed(3), true);
             inPerod = true;
@@ -41,6 +75,24 @@ function unionAnims(arr) {
    return unionArr;
 }
 
+function rmvKeysOut(layer) {
+   if(layer === undefined) return false;
+   for(var i = 1; i <= layer.numProperties; i++) {
+      for(var j = 1; j <= layer.property(i).numProperties; j++) {
+         var prop = layer.property(i).property(j);
+         if(prop.numKeys) {
+            for(var z = 1; z <= prop.numKeys; z++) {
+               if(prop.keyTime(z) < layer.inPoint - std.frameDuration/8 || prop.keyTime(z) > layer.outPoint + std.frameDuration/8) {
+                  prop.removeKey(z);
+                  z--;
+               }
+            }
+         }
+      }
+   }
+   return true;
+}
+
 function cutToKeys(layer) {
    var allAnims = [];
    for(var i = 1; i <= layer.numProperties; i++) {
@@ -58,13 +110,16 @@ function cutToKeys(layer) {
       return a[0] - b[0];
    }));
 
-   var count = 0;
-   for(i = 0; i < unionSections.length; i += 2) {
-      if(count) layer = layer.duplicate();
+   var finalLayers = [];
+
+   for(var i = 0; i < unionSections.length; i += 2) {
+      if(i) layer = layer.duplicate();
+      finalLayers.push(layer);
       layer.inPoint = unionSections[i][0];
       layer.outPoint = unionSections[i + 1][0];
-      count++;
    }
+
+   for(var i = 0; i < finalLayers.length; i++) rmvKeysOut(finalLayers[i]);
 }
 
 var layers = [];
@@ -77,6 +132,7 @@ app.beginUndoGroup("cut to keys");
 
 for(var a = 0; a < layers.length; a++) {
    cutToKeys(layers[a]);
+   //rmvKeysOut(layers[a]);
 }
 
 app.endUndoGroup();
