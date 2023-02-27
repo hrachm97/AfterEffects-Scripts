@@ -21,10 +21,10 @@ function arraysEqual(arr1, arr2) {
       val1 = arr1[i];
       val2 = arr2[i];
 
-      // If both values are arrays, recursively compare them
-      if (Array.isArray(val1) && Array.isArray(val2)) {
+      //recursively compare them
+      if (val1.length !== undefined && val2.length !== undefined) {
          if (!arraysEqual(val1, val2)) {
-         return false;
+            return false;
          }
       }
       // Otherwise, compare the values directly
