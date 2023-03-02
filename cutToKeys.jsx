@@ -1,7 +1,7 @@
 var std = app.project.activeItem;
 
 function relEqual(a,b, relativityAmount) {
-   if(relativityAmount === undefined) relativityAmount = std.frameDuration;
+   if(relativityAmount === undefined) relativityAmount = std.frameDuration*2;
    //alert(a + ", " + b);
    return Math.abs(a - b) <= relativityAmount;
 }
@@ -55,10 +55,12 @@ function getSetAnimatedSections(prop) {
          // alert(prop.valueAtTime(prop.keyTime(k).toFixed(3), true));
          // alert(prevValue);
          if(equal(prop.valueAtTime(prop.keyTime(k).toFixed(3), true), prevValue)) {
-            alert();
             prop.removeKey(k - 1);
             k--;
          } else {
+            //std.time = prop.keyTime(k - 1);
+            //alert("inPerod");
+            //alert(String(prevValue) + ',' + String(prop.valueAtTime(prop.keyTime(k).toFixed(3), true)));
             animatedTimes.push([prop.keyTime(k - 1).toFixed(3), 1]);
             prevValue = prop.valueAtTime(prop.keyTime(k).toFixed(3), true);
             inPerod = true;
@@ -73,6 +75,9 @@ function getSetAnimatedSections(prop) {
 function unionAnims(arr) {
    var unionArr = [];
    var stack = 0;
+   arr = arr.sort(function(a, b) {
+      return a[0] - b[0];
+   });
    for(b = 0; b < arr.length; b++) {
       if(stack === 0) unionArr.push(arr[b]);
       stack += arr[b][1];
@@ -129,9 +134,7 @@ function cutToKeys(layer) {
          }
       }
    }
-   var unionSections = unionAnims(allAnims.sort(function(a, b) {
-      return a[0] - b[0];
-   }));
+   var unionSections = unionAnims(allAnims);
 
    var finalLayers = [];
 
@@ -142,7 +145,7 @@ function cutToKeys(layer) {
       layer.outPoint = unionSections[i + 1][0];
    }
 
-   //for(var i = 0; i < finalLayers.length; i++) rmvKeysOut(finalLayers[i]);
+   for(var i = 0; i < finalLayers.length; i++) rmvKeysOut(finalLayers[i]);
 }
 
 var layers = [];
