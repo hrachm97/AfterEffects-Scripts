@@ -19,7 +19,6 @@ function inPointExpression() {
         //alert(theLayerPath);
         
         for(i = 0; i < layers.length; i++) {
-            alert();
             layers[i].transform.position.expression = "var otherLayer = " + theLayerPath + ";\nvar difference = thisLayer.inPoint - otherLayer.inPoint;\notherLayer.transform.position.valueAtTime(time - difference)";
         }
     } 
