@@ -36,40 +36,77 @@ function equal(arr1, arr2) {
    return true;
 }
 
-function getSetAnimatedSections(prop) {
+function startEndResolve(prop, first, second) {
+   if(first <= 0 && second <= 0) {
+      prop.removeKey(prop.nearestKeyIndex(first));
+      prop.removeKey(prop.nearestKeyIndex(second));
+      return false;
+   } else if (first * second < 0) {
+   //if one is negative and the other not 
+      prop.addKey(0);
+      prop.removeKey(prop.nearestKeyIndex(first));
+      return true;
+   } else if (second >= std.duration) {
+      if(first >= std.duration) return false;
+      else {
+         prop.addKey(std.duration);
+         prop.removeKey(prop.nearestKeyIndex(second));
+         return true;
+      }
+   } else return true;
+}
+
+function getOptAnimatedSections(prop, log, optimize) {
+   if(log === undefined) log = true;
+   if(optimize === undefined) optimize = true;
+   
+   //optimizes keys and logs animated section starts and ends
    var animatedTimes = [];
+   
    var inPerod = false;
    var prevValue = prop.valueAtTime(prop.keyTime(1).toFixed(3), true);
    //alert(prop.name);
    for(var k = 2; k <= prop.numKeys; k++) {
-      if(inPerod) {
-         if(equal(prop.valueAtTime(prop.keyTime(k).toFixed(3), true), prevValue)) {
-            animatedTimes.push([prop.keyTime(k - 1).toFixed(3), -1]);
-            inPerod = false;
-            if(k === prop.numKeys) prop.removeKey(k);
+      if(startEndResolve(prop, prop.keyTime(k - 1), prop.keyTime(k))) {
+         if(inPerod) {
+            if(equal(prop.valueAtTime(prop.keyTime(k).toFixed(3), true), prevValue)) {
+               if(log) animatedTimes.push([prop.keyTime(k - 1).toFixed(3), -1]);
+               inPerod = false;
+               if(k === prop.numKeys && optimize) prop.removeKey(k);
+            } else {
+               prevValue = prop.valueAtTime(prop.keyTime(k).toFixed(3), true);
+               if(k === prop.numKeys && log) animatedTimes.push([prop.keyTime(k).toFixed(3), -1]);
+            }
          } else {
-            prevValue = prop.valueAtTime(prop.keyTime(k).toFixed(3), true);
-            if(k === prop.numKeys) animatedTimes.push([prop.keyTime(k).toFixed(3), -1]);
-         }
-      } else {
-         // alert(prop.valueAtTime(prop.keyTime(k).toFixed(3), true));
-         // alert(prevValue);
-         if(equal(prop.valueAtTime(prop.keyTime(k).toFixed(3), true), prevValue)) {
-            prop.removeKey(k - 1);
-            k--;
-         } else {
-            //std.time = prop.keyTime(k - 1);
-            //alert("inPerod");
-            //alert(String(prevValue) + ',' + String(prop.valueAtTime(prop.keyTime(k).toFixed(3), true)));
-            animatedTimes.push([prop.keyTime(k - 1).toFixed(3), 1]);
-            prevValue = prop.valueAtTime(prop.keyTime(k).toFixed(3), true);
-            inPerod = true;
-            if(k === prop.numKeys) animatedTimes.push([prop.keyTime(k).toFixed(3), -1]);
+            if(equal(prop.valueAtTime(prop.keyTime(k).toFixed(3), true), prevValue) && optimize) {
+               prop.removeKey(k - 1);
+               k--;
+            } else {
+               if(log) animatedTimes.push([prop.keyTime(k - 1).toFixed(3), 1]);
+               prevValue = prop.valueAtTime(prop.keyTime(k).toFixed(3), true);
+               inPerod = true;
+               if(k === prop.numKeys && log) animatedTimes.push([prop.keyTime(k).toFixed(3), -1]);
+            }
          }
       }
    }
-   //alert(animatedTimes);
+   if(prop.numKeys === 1) prop.removeKey(1);
    return animatedTimes;
+}
+
+
+function collectAnims(layer) {
+   var allAnims = [];
+   for(var i = 1; i <= layer.numProperties; i++) {
+      for(var j = 1; j <= layer.property(i).numProperties; j++) {
+         var prop = layer.property(i).property(j);
+         if(prop.numKeys) {
+            var animatedSections = getOptAnimatedSections(prop);
+            for(c = 0; c < animatedSections.length; c++) allAnims.push(animatedSections[c]);
+         }
+      }
+   }
+   return allAnims;
 }
 
 function unionAnims(arr) {
@@ -110,31 +147,7 @@ function rmvKeysOut(layer) {
 }
 
 function cutToKeys(layer) {
-   var allAnims = [];
-   for(var i = 1; i <= layer.numProperties; i++) {
-      for(var j = 1; j <= layer.property(i).numProperties; j++) {
-         var prop = layer.property(i).property(j);
-         if(prop.numKeys) {
-            var propAnims = getSetAnimatedSections(prop);
-            for(z = 0; z < propAnims.length; z++) {
-               if(propAnims[z + 1]) {
-                  if(propAnims[z][0] <= 0 && propAnims[z + 1][0] <= 0) {
-                     z++;
-                     continue;
-                  }
-                  else if(propAnims[z][0] * propAnims[z + 1][0] < 0) {
-                  //if one is negative and the other not 
-                     prop.addKey(0);
-                     prop.removeKey(prop.nearestKeyIndex(propAnims[z][0]));
-                     propAnims[z][0] = 0;
-                  }
-               }
-               allAnims.push(propAnims[z]);
-            }
-         }
-      }
-   }
-   var unionSections = unionAnims(allAnims);
+   var unionSections = unionAnims(collectAnims(layer));
 
    var finalLayers = [];
 
@@ -146,6 +159,11 @@ function cutToKeys(layer) {
    }
 
    for(var i = 0; i < finalLayers.length; i++) rmvKeysOut(finalLayers[i]);
+}
+
+function cut(layer) {
+   var allAnims = collectAnims(layer);
+
 }
 
 var layers = [];
