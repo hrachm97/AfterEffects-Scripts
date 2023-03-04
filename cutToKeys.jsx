@@ -36,27 +36,35 @@ function equal(arr1, arr2) {
    return true;
 }
 
-function startEndResolve(prop, first, second) {
-   if(first <= 0 && second <= 0) {
+function startEndResolve(prop, first, second, layer) {
+   var startCut, endCut;
+   if(layer) {
+      startCut = layer.inPoint;
+      endCut = layer.outPoint;
+   } else {
+      startCut = 0;
+      endCut = std.duration;
+   }
+   if(first <= startCut && second <= startCut) {
       prop.removeKey(prop.nearestKeyIndex(first));
       prop.removeKey(prop.nearestKeyIndex(second));
       return false;
-   } else if (first * second < 0) {
+   } else if ((first - startCut) * (second - startCut) < 0) {
    //if one is negative and the other not 
-      prop.addKey(0);
+      prop.addKey(startCut);
       prop.removeKey(prop.nearestKeyIndex(first));
       return true;
-   } else if (second >= std.duration) {
-      if(first >= std.duration) return false;
+   } else if (second >= endCut) {
+      if(first >= endCut) return false;
       else {
-         prop.addKey(std.duration);
+         prop.addKey(endCut);
          prop.removeKey(prop.nearestKeyIndex(second));
          return true;
       }
    } else return true;
 }
 
-function getOptAnimatedSections(prop, log, optimize) {
+function getOptAnimatedSections(prop, layer, log, optimize) {
    if(log === undefined) log = true;
    if(optimize === undefined) optimize = true;
    
@@ -67,7 +75,7 @@ function getOptAnimatedSections(prop, log, optimize) {
    var prevValue = prop.valueAtTime(prop.keyTime(1).toFixed(3), true);
    //alert(prop.name);
    for(var k = 2; k <= prop.numKeys; k++) {
-      if(startEndResolve(prop, prop.keyTime(k - 1), prop.keyTime(k))) {
+      if(startEndResolve(prop, prop.keyTime(k - 1), prop.keyTime(k), layer)) {
          if(inPerod) {
             if(equal(prop.valueAtTime(prop.keyTime(k).toFixed(3), true), prevValue)) {
                if(log) animatedTimes.push([prop.keyTime(k - 1).toFixed(3), -1]);
@@ -101,8 +109,8 @@ function collectAnims(layer) {
       for(var j = 1; j <= layer.property(i).numProperties; j++) {
          var prop = layer.property(i).property(j);
          if(prop.numKeys) {
-            var animatedSections = getOptAnimatedSections(prop);
-            for(c = 0; c < animatedSections.length; c++) allAnims.push(animatedSections[c]);
+            var animatedSections = getOptAnimatedSections(prop, layer);
+            for(var c = 0; c < animatedSections.length; c++) allAnims.push(animatedSections[c]);
          }
       }
    }
@@ -152,10 +160,10 @@ function cutToKeys(layer) {
    var finalLayers = [];
 
    for(var i = 0; i < unionSections.length; i += 2) {
-      if(i) layer = layer.duplicate();
-      finalLayers.push(layer);
-      layer.inPoint = unionSections[i][0];
-      layer.outPoint = unionSections[i + 1][0];
+      // if(i) layer = layer.duplicate();
+      // finalLayers.push(layer);
+      // layer.inPoint = unionSections[i][0];
+      // layer.outPoint = unionSections[i + 1][0];
    }
 
    for(var i = 0; i < finalLayers.length; i++) rmvKeysOut(finalLayers[i]);
