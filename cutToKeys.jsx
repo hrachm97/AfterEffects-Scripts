@@ -47,21 +47,31 @@ function startEndResolve(prop, first, second, layer) {
    }
    if(first <= startCut && second <= startCut) {
       prop.removeKey(prop.nearestKeyIndex(first));
-      prop.removeKey(prop.nearestKeyIndex(second));
-      return false;
+      return 1;
    } else if ((first - startCut) * (second - startCut) < 0) {
    //if one is negative and the other not 
       prop.addKey(startCut);
       prop.removeKey(prop.nearestKeyIndex(first));
-      return true;
-   } else if (second >= endCut) {
-      if(first >= endCut) return false;
-      else {
+      return 0;
+   } else if (second  - endCut > std.frameDuration/4) { // approximation of second > endCut
+      if(first - endCut > std.frameDuration/4) { // approximation of first > endCut
+         alert("removing " + first + "as it is greater than endcut: " + endCut);
+         prop.removeKey(prop.nearestKeyIndex(first));
+         if(equal(second, prop.keyTime(prop.numKeys))) {
+            prop.removeKey(prop.nearestKeyIndex(second));
+            return 1;
+         } else return 1;
+      } else if(equal(first, endCut)) {
+         if(equal(second, prop.keyTime(prop.numKeys))) {
+            prop.removeKey(prop.nearestKeyIndex(second));
+            return 1;
+         } else return 0;
+      } else {
          prop.addKey(endCut);
          prop.removeKey(prop.nearestKeyIndex(second));
-         return true;
+         return 0;
       }
-   } else return true;
+   } else return 0;
 }
 
 function getOptAnimatedSections(prop, layer, log, optimize) {
@@ -76,6 +86,9 @@ function getOptAnimatedSections(prop, layer, log, optimize) {
    //alert(prop.name);
    for(var k = 2; k <= prop.numKeys; k++) {
       if(startEndResolve(prop, prop.keyTime(k - 1), prop.keyTime(k), layer)) {
+         k--; // to set the k the same and start again
+         continue;
+      } else {
          if(inPerod) {
             if(equal(prop.valueAtTime(prop.keyTime(k).toFixed(3), true), prevValue)) {
                if(log) animatedTimes.push([prop.keyTime(k - 1).toFixed(3), -1]);
@@ -87,9 +100,11 @@ function getOptAnimatedSections(prop, layer, log, optimize) {
             }
          } else {
             if(equal(prop.valueAtTime(prop.keyTime(k).toFixed(3), true), prevValue) && optimize) {
+               alert("inPerod is false and previous key is equal so removing prevKey");
                prop.removeKey(k - 1);
                k--;
             } else {
+               alert("inPerod is false but previous key is not equal so not removing prevKey");
                if(log) animatedTimes.push([prop.keyTime(k - 1).toFixed(3), 1]);
                prevValue = prop.valueAtTime(prop.keyTime(k).toFixed(3), true);
                inPerod = true;
@@ -166,7 +181,7 @@ function cutToKeys(layer) {
       // layer.outPoint = unionSections[i + 1][0];
    }
 
-   for(var i = 0; i < finalLayers.length; i++) rmvKeysOut(finalLayers[i]);
+   //for(var i = 0; i < finalLayers.length; i++) rmvKeysOut(finalLayers[i]);
 }
 
 function cut(layer) {
