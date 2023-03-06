@@ -36,80 +36,111 @@ function equal(arr1, arr2) {
    return true;
 }
 
-function startEndResolve(prop, first, second, layer) {
+function cmp(a, b, relativityAmount) {
+   if(relativityAmount === undefined) relativityAmount = std.frameDuration/2;
+   if(Math.abs(a - b) > relativityAmount) return a - b;
+   else return 0;
+}
+
+function nearestKeyIndex(prop, time, orient) {
+   var index = prop.nearestKeyIndex(time);
+   
+   if (cmp(prop.keyTime(index), time) > 0) {
+      if(orient === 1) return index;
+      if(index > 1 && orient === -1) return index - 1;
+   } else if (cmp(prop.keyTime(index), time) < 0) {
+      if(orient === -1) return index;
+      if(index < prop.numKeys && orient === 1) return index + 1;
+   }
+   return 0;
+}
+
+function rmvKeysOut(prop, start, end, inOut) {
+   if(inOut === false || inOut === undefined) {
+      for(var z = 2; z <= prop.numKeys; z++) {
+         if(cmp(prop.keyTime(z), start) <= 0) {
+            prop.removeKey(--z);
+         } else break;
+      }
+   }
+   if(inOut === true || inOut === undefined) {
+      for(var z = prop.numKeys - 1; z >= 1; z--) {
+         if(prop.keyTime(z) > end) {
+            prop.removeKey(z + 1);
+         } else break;
+      }
+   }
+}
+
+function startEndResolve(prop, layer, inOut, keysIn) {
    var startCut, endCut;
-   if(layer) {
+   if (layer) {
       startCut = layer.inPoint;
       endCut = layer.outPoint;
    } else {
       startCut = 0;
       endCut = std.duration;
    }
-   if(first <= startCut && second <= startCut) {
-      prop.removeKey(prop.nearestKeyIndex(first));
-      return 1;
-   } else if ((first - startCut) * (second - startCut) < 0) {
-   //if one is negative and the other not 
-      prop.addKey(startCut);
-      prop.removeKey(prop.nearestKeyIndex(first));
-      return 0;
-   } else if (second  - endCut > std.frameDuration/4) { // approximation of second > endCut
-      if(first - endCut > std.frameDuration/4) { // approximation of first > endCut
-         alert("removing " + first + "as it is greater than endcut: " + endCut);
-         prop.removeKey(prop.nearestKeyIndex(first));
-         if(equal(second, prop.keyTime(prop.numKeys))) {
-            prop.removeKey(prop.nearestKeyIndex(second));
-            return 1;
-         } else return 1;
-      } else if(equal(first, endCut)) {
-         if(equal(second, prop.keyTime(prop.numKeys))) {
-            prop.removeKey(prop.nearestKeyIndex(second));
-            return 1;
-         } else return 0;
-      } else {
-         prop.addKey(endCut);
-         prop.removeKey(prop.nearestKeyIndex(second));
-         return 0;
+
+   rmvKeysOut(prop, startCut, endCut, inOut);
+
+   if(inOut === false || inOut === undefined && keysIn) {
+      var inIndex = prop.nearestKeyIndex(startCut);
+      if (cmp(prop.keyTime(inIndex), startCut) > 0 && inIndex > 1) inIndex--;
+      if (cmp(prop.keyTime(inIndex), startCut) < 0 && inIndex < prop.numKeys) {
+         prop.addKey(startCut);
+         prop.removeKey(inIndex);
       }
-   } else return 0;
+   }
+   if(inOut === true || inOut === undefined && keysIn){
+      var outIndex = prop.nearestKeyIndex(endCut);
+      if (cmp(prop.keyTime(outIndex), endCut) < 0 && outIndex < prop.numKeys) outIndex++;
+      if (cmp(prop.keyTime(outIndex), endCut) > 0 && outIndex > 1) {
+         prop.addKey(endCut);
+         prop.removeKey(++outIndex);
+      }
+   }
 }
 
-function getOptAnimatedSections(prop, layer, log, optimize) {
-   if(log === undefined) log = true;
-   if(optimize === undefined) optimize = true;
+function getOptAnimatedSections(prop, layer, inOut, keysIn) {
    
-   //optimizes keys and logs animated section starts and ends
+   //s keys and logs animated section starts and ends
    var animatedTimes = [];
    
+   startEndResolve(prop, layer, inOut, keysIn);
+   if(prop.numKeys === 0) return animatedTimes;
+
    var inPerod = false;
    var prevValue = prop.valueAtTime(prop.keyTime(1).toFixed(3), true);
    //alert(prop.name);
+
+   function startAnim(k) {
+      if(inPerod) alert("Error: animation is already started!");
+      animatedTimes.push([prop.keyTime(k - 1).toFixed(3), 1]);
+      inPerod = true;
+      prevValue = prop.valueAtTime(prop.keyTime(k).toFixed(3), true);
+   }
+   function endAnim(k) {
+      if(!inPerod) alert("Error: animation must have been started to end!");
+      animatedTimes.push([prop.keyTime(k - 1).toFixed(3), -1]);
+      inPerod = false;
+      if(k === prop.numKeys) prop.removeKey(k);
+   }
+
    for(var k = 2; k <= prop.numKeys; k++) {
-      if(startEndResolve(prop, prop.keyTime(k - 1), prop.keyTime(k), layer)) {
-         k--; // to set the k the same and start again
-         continue;
-      } else {
-         if(inPerod) {
-            if(equal(prop.valueAtTime(prop.keyTime(k).toFixed(3), true), prevValue)) {
-               if(log) animatedTimes.push([prop.keyTime(k - 1).toFixed(3), -1]);
-               inPerod = false;
-               if(k === prop.numKeys && optimize) prop.removeKey(k);
-            } else {
-               prevValue = prop.valueAtTime(prop.keyTime(k).toFixed(3), true);
-               if(k === prop.numKeys && log) animatedTimes.push([prop.keyTime(k).toFixed(3), -1]);
-            }
+      if (inPerod) {
+         if(equal(prop.valueAtTime(prop.keyTime(k).toFixed(3), true), prevValue)) {
+            endAnim(k);
          } else {
-            if(equal(prop.valueAtTime(prop.keyTime(k).toFixed(3), true), prevValue) && optimize) {
-               alert("inPerod is false and previous key is equal so removing prevKey");
-               prop.removeKey(k - 1);
-               k--;
-            } else {
-               alert("inPerod is false but previous key is not equal so not removing prevKey");
-               if(log) animatedTimes.push([prop.keyTime(k - 1).toFixed(3), 1]);
-               prevValue = prop.valueAtTime(prop.keyTime(k).toFixed(3), true);
-               inPerod = true;
-               if(k === prop.numKeys && log) animatedTimes.push([prop.keyTime(k).toFixed(3), -1]);
-            }
+            prevValue = prop.valueAtTime(prop.keyTime(k).toFixed(3), true);
+            if(k === prop.numKeys) animatedTimes.push([prop.keyTime(k).toFixed(3), -1]);
+         }
+      } else {
+         if(equal(prop.valueAtTime(prop.keyTime(k).toFixed(3), true), prevValue)) {
+            prop.removeKey(--k);
+            if(k === prop.numKeys) prop.removeKey(k);
+         } else {
+            if(k !== prop.numKeys) startAnim(k);
          }
       }
    }
@@ -146,28 +177,6 @@ function unionAnims(arr) {
    return unionArr;
 }
 
-function rmvKeysOut(layer) {
-   if(layer === undefined) return false;
-   for(var i = 1; i <= layer.numProperties; i++) {
-      for(var j = 1; j <= layer.property(i).numProperties; j++) {
-         var prop = layer.property(i).property(j);
-         if(prop.numKeys) {
-            for(var z = 1; z <= prop.numKeys; z++) {
-               if(prop.keyTime(z) < layer.inPoint - std.frameDuration/8) {
-                  prop.removeKey(z);
-                  z--;
-               } else break;
-            }
-            for(var z = prop.numKeys; z >= 1; z--) {
-               if(prop.keyTime(z) > layer.outPoint + std.frameDuration/8) {
-                  prop.removeKey(z);
-               } else break;
-            }
-         }
-      }
-   }
-   return true;
-}
 
 function cutToKeys(layer) {
    var unionSections = unionAnims(collectAnims(layer));
@@ -184,11 +193,23 @@ function cutToKeys(layer) {
    //for(var i = 0; i < finalLayers.length; i++) rmvKeysOut(finalLayers[i]);
 }
 
-function cut(layer) {
-   var allAnims = collectAnims(layer);
-
+function doThing(layer, inOut, keysIn) {
+   for(var i = 1; i <= layer.numProperties; i++) {
+      for(var j = 1; j <= layer.property(i).numProperties; j++) {
+         var prop = layer.property(i).property(j);
+         if(prop.numKeys) getOptAnimatedSections(prop, layer, inOut, keysIn);
+      }
+   }
 }
 
+function cut(layer) {
+   var secondLayer = layer.duplicate();
+   layer.outPoint = secondLayer.inPoint = std.time;
+   doThing(layer, true, layer.name == "k");
+   doThing(secondLayer, false, layer.name == "k");
+}
+
+//execution
 var layers = [];
 
 for(i = 0; i < std.selectedLayers.length; i++) {
@@ -198,8 +219,9 @@ for(i = 0; i < std.selectedLayers.length; i++) {
 app.beginUndoGroup("cut to keys");
 
 for(var a = 0; a < layers.length; a++) {
-   cutToKeys(layers[a]);
-   //rmvKeysOut(layers[a]);
+   cut(layers[a]);
 }
+
+//startEndResolve(std.layer(1).property("Anchor Point"), std.layer(1));
 
 app.endUndoGroup();
