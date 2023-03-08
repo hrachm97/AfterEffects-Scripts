@@ -7,11 +7,13 @@ function setDuration(layer, outPointAdjust) {
       if(layer.source.duration != std.duration) {
          layer.source.duration = std.duration;
          count++;
+         for(var i = 1; i <= layer.source.numLayers; i++) {
+            setDuration(layer.source.layer(i), outPointAdjust);
+         }
       }
       if(outPointAdjust) layer.outPoint = layer.startTime + layer.source.duration;
-      for(var i = 1; i <= layer.source.numLayers; i++) {
-         setDuration(layer.source.layer(i), outPointAdjust);
-      }
+   } else {
+      if(outPointAdjust) layer.outPoint = std.duration;
    }
 }
 
