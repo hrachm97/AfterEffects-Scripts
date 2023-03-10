@@ -16,7 +16,7 @@ function setFrameRate(layer) {
 
 app.beginUndoGroup("adjusting frame rates");
 
-for(i = 0; i < std.selectedLayers.length; i++) {
+for(var i = 0; i < std.selectedLayers.length; i++) {
    setFrameRate(std.selectedLayers[i]);
 }
 alert(count + " comp fps have been adjusted");
