@@ -1,4 +1,5 @@
 //testing git
+//test git2
 
 var project = app.project;
 var comp = project.activeItem;
