@@ -1,3 +1,5 @@
+//git test from mac
+
 var std = app.project.activeItem;
 
 function relEqual(a,b, relativityAmount) {
@@ -42,6 +44,15 @@ function cmp(a, b, relativityAmount) {
    else return 0;
 }
 
+if (!Array.prototype.forEach) {
+   Array.prototype.forEach = function (callback, thisArg) {
+     var array = this;
+     for (var i = 0; i < array.length; i++) {
+       callback.call(thisArg, array[i], i, array);
+     }
+   };
+}
+
 function nearestKeyIndex(prop, time, orient) {
    var index = prop.nearestKeyIndex(time);
    
@@ -55,24 +66,33 @@ function nearestKeyIndex(prop, time, orient) {
    return 0;
 }
 
-function rmvKeysOut(prop, start, end, inOut) {
-   if(inOut === false || inOut === undefined) {
+function rmvKeysOut(prop, start, end, cutInOut) {
+   function cutIn() {
       for(var z = 2; z <= prop.numKeys; z++) {
          if(cmp(prop.keyTime(z), start) <= 0) {
             prop.removeKey(--z);
          } else break;
       }
    }
-   if(inOut === true || inOut === undefined) {
+   function cutOut() {
       for(var z = prop.numKeys - 1; z >= 1; z--) {
          if(prop.keyTime(z) > end) {
             prop.removeKey(z + 1);
          } else break;
       }
    }
+
+   if(cutInOut === false) {
+      cutIn();
+   } else if (cutInOut === true) {
+      cutOut();
+   }  else if(cutInOut === undefined) {
+      cutIn();
+      cutOut();
+   }
 }
 
-function startEndResolve(prop, layer, inOut, keysIn) {
+function startEndResolve(prop, layer, cutInOut, keysIn) {
    var startCut, endCut;
    if (layer) {
       startCut = layer.inPoint;
@@ -82,9 +102,9 @@ function startEndResolve(prop, layer, inOut, keysIn) {
       endCut = std.duration;
    }
 
-   rmvKeysOut(prop, startCut, endCut, inOut);
+   rmvKeysOut(prop, startCut, endCut, cutInOut);
 
-   if(inOut === false || inOut === undefined && keysIn) {
+   if(cutInOut === false || cutInOut === undefined && keysIn) {
       var inIndex = prop.nearestKeyIndex(startCut);
       if (cmp(prop.keyTime(inIndex), startCut) > 0 && inIndex > 1) inIndex--;
       if (cmp(prop.keyTime(inIndex), startCut) < 0 && inIndex < prop.numKeys) {
@@ -92,7 +112,7 @@ function startEndResolve(prop, layer, inOut, keysIn) {
          prop.removeKey(inIndex);
       }
    }
-   if(inOut === true || inOut === undefined && keysIn){
+   if(cutInOut === true || cutInOut === undefined && keysIn){
       var outIndex = prop.nearestKeyIndex(endCut);
       if (cmp(prop.keyTime(outIndex), endCut) < 0 && outIndex < prop.numKeys) outIndex++;
       if (cmp(prop.keyTime(outIndex), endCut) > 0 && outIndex > 1) {
@@ -102,12 +122,12 @@ function startEndResolve(prop, layer, inOut, keysIn) {
    }
 }
 
-function getOptAnimatedSections(prop, layer, inOut, keysIn) {
+function getOptAnimatedSections(prop, layer, cutInOut, keysIn) {
    
    //s keys and logs animated section starts and ends
    var animatedTimes = [];
    
-   startEndResolve(prop, layer, inOut, keysIn);
+   startEndResolve(prop, layer, cutInOut, keysIn);
    if(prop.numKeys === 0) return animatedTimes;
 
    var inPerod = false;
@@ -140,7 +160,8 @@ function getOptAnimatedSections(prop, layer, inOut, keysIn) {
             prop.removeKey(--k);
             if(k === prop.numKeys) prop.removeKey(k);
          } else {
-            if(k !== prop.numKeys) startAnim(k);
+            startAnim(k);
+            if(k === prop.numKeys) endAnim(k + 1);
          }
       }
    }
@@ -148,6 +169,14 @@ function getOptAnimatedSections(prop, layer, inOut, keysIn) {
    return animatedTimes;
 }
 
+function loopProps(layer, cutInOut, trimAnim) {
+   for(var i = 1; i <= layer.numProperties; i++) {
+      for(var j = 1; j <= layer.property(i).numProperties; j++) {
+         var prop = layer.property(i).property(j);
+         if(prop.numKeys) getOptAnimatedSections(prop, layer, cutInOut, trimAnim);
+      }
+   }
+}
 
 function collectAnims(layer) {
    var allAnims = [];
@@ -179,37 +208,55 @@ function unionAnims(arr) {
 
 
 function cutToKeys(layer) {
+   if(layer instanceof AVLayer === false) return 0;
    var unionSections = unionAnims(collectAnims(layer));
 
    var finalLayers = [];
 
    for(var i = 0; i < unionSections.length; i += 2) {
-      // if(i) layer = layer.duplicate();
-      // finalLayers.push(layer);
-      // layer.inPoint = unionSections[i][0];
-      // layer.outPoint = unionSections[i + 1][0];
+      if(i) layer = layer.duplicate();
+      finalLayers.push(layer);
+      layer.inPoint = unionSections[i][0];
+      layer.outPoint = unionSections[i + 1][0];
+      //loopProps(layer);
    }
+   return finalLayers;
 
    //for(var i = 0; i < finalLayers.length; i++) rmvKeysOut(finalLayers[i]);
 }
 
-function doThing(layer, inOut, keysIn) {
-   for(var i = 1; i <= layer.numProperties; i++) {
-      for(var j = 1; j <= layer.property(i).numProperties; j++) {
-         var prop = layer.property(i).property(j);
-         if(prop.numKeys) getOptAnimatedSections(prop, layer, inOut, keysIn);
-      }
-   }
-}
 
-function cut(layer) {
+function cut(layer, trimKeys) {
+   if(layer.inPoint >= std.time || layer.outPoint <= std.time) return;
    var secondLayer = layer.duplicate();
-   layer.outPoint = secondLayer.inPoint = std.time;
-   doThing(layer, true, layer.name == "k");
-   doThing(secondLayer, false, layer.name == "k");
+   layer.outPoint = std.time;
+   var fix = secondLayer.outPoint; //bug tmp fix
+   secondLayer.inPoint = std.time;
+   secondLayer.outPoint = fix; //bug tmp fix
+   loopProps(layer, true, trimKeys);
+   loopProps(secondLayer, false, trimKeys);
+   return secondLayer;
 }
 
 //execution
+var testCases = {
+   "optimize keys": loopProps,
+   "cut animAreas": cutToKeys,
+   "trim Layer": cut,
+   "trim Layer and keys": function(layer) {
+      cut(layer, true);
+   },
+   "cut animAreas and trim layers": function(layer) {
+      cutToKeys(layer).forEach(function(layer) {
+         cut(layer);
+      })
+   },
+   "cut animAreas and trim keys": function(layer) {
+      cutToKeys(cut(layer, true));
+      cutToKeys(layer);
+   }
+}
+
 var layers = [];
 
 for(i = 0; i < std.selectedLayers.length; i++) {
@@ -219,7 +266,7 @@ for(i = 0; i < std.selectedLayers.length; i++) {
 app.beginUndoGroup("cut to keys");
 
 for(var a = 0; a < layers.length; a++) {
-   cut(layers[a]);
+   testCases[layers[a].name](layers[a]);
 }
 
 //startEndResolve(std.layer(1).property("Anchor Point"), std.layer(1));
