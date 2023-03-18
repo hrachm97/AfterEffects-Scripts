@@ -4,7 +4,6 @@ var std = app.project.activeItem;
 
 function relEqual(a,b, relativityAmount) {
    if(relativityAmount === undefined) relativityAmount = std.frameDuration*2;
-   //alert(a + ", " + b);
    return Math.abs(a - b) <= relativityAmount;
 }
 
@@ -208,18 +207,23 @@ function unionAnims(arr) {
 
 
 function cutToKeys(layer) {
-   if(layer instanceof AVLayer === false) return 0;
+   if(layer instanceof TextLayer === false) return [];
    var unionSections = unionAnims(collectAnims(layer));
 
    var finalLayers = [];
 
    for(var i = 0; i < unionSections.length; i += 2) {
-      if(i) layer = layer.duplicate();
+      var newLayer;
+      if(i) {
+         newLayer = layer.duplicate();
+         collectAnims(layer);
+         layer = newLayer;
+      }
       finalLayers.push(layer);
       layer.inPoint = unionSections[i][0];
       layer.outPoint = unionSections[i + 1][0];
-      //loopProps(layer);
    }
+   collectAnims(layer);
    return finalLayers;
 
    //for(var i = 0; i < finalLayers.length; i++) rmvKeysOut(finalLayers[i]);
@@ -252,23 +256,67 @@ var testCases = {
       })
    },
    "cut animAreas and trim keys": function(layer) {
-      cutToKeys(cut(layer, true));
-      cutToKeys(layer);
+      // cutToKeys(cut(layer, true));
+      // cutToKeys(layer);
+      cutToKeys(layer).forEach(function(layer) {
+         cut(layer, true);
+      })
    }
 }
 
-var layers = [];
+// User Interface
+var mainWindow = new Window("palette", "Mask Importer/Exporter", undefined);
+mainWindow.orientation = "column";
+ 
+var groupOne = mainWindow.add("group", undefined, "groupOne");
+groupOne.orientation = "row";
+var optimizeButton = groupOne.add("button", undefined, "Optimize Keys");
+var splitButton = groupOne.add("button", undefined, "Split Layer");
+var seperateButton = groupOne.add("button", undefined, "Seperate Animated Sections");
+ 
+mainWindow.center();
+mainWindow.show();
 
-for(i = 0; i < std.selectedLayers.length; i++) {
-   layers.push(std.selectedLayers[i]);
+optimizeButton.onClick = function() {
+   app.beginUndoGroup("keys optimized");
+
+   var layers = [];
+   for(i = 0; i < std.selectedLayers.length; i++) {
+      layers.push(std.selectedLayers[i]);
+   }
+   
+   for(var a = 0; a < layers.length; a++) {
+      loopProps(layers[a]);
+   }
+   
+   app.endUndoGroup();
 }
 
-app.beginUndoGroup("cut to keys");
+splitButton.onClick = function() {
+   app.beginUndoGroup("keys optimized");
 
-for(var a = 0; a < layers.length; a++) {
-   testCases[layers[a].name](layers[a]);
+   var layers = [];
+   for(i = 0; i < std.selectedLayers.length; i++) {
+      layers.push(std.selectedLayers[i]);
+   }
+
+   for(var a = 0; a < layers.length; a++) {
+      cut(layers[a], true);
+   }
+   app.endUndoGroup();
 }
 
-//startEndResolve(std.layer(1).property("Anchor Point"), std.layer(1));
+seperateButton.onClick = function() {
+   app.beginUndoGroup("keys optimized");
 
-app.endUndoGroup();
+   var layers = [];
+   for(i = 0; i < std.selectedLayers.length; i++) {
+      layers.push(std.selectedLayers[i]);
+   }
+   
+   for(var a = 0; a < layers.length; a++) {
+      cutToKeys(layers[a]);
+   }
+   app.endUndoGroup();
+}
+
